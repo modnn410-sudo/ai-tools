@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Tools Directory</title>
+  <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+  <header class="max-w-5xl mx-auto px-4 pt-12 pb-8 text-center">
+    <span class="px-3 py-1 text-xs font-semibold bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">Updated Automatically Every 12h</span>
+    <h1 class="text-4xl md:text-5xl font-extrabold mt-4 bg-gradient-to-r from-indigo-400 to-cyan-300 bg-clip-text text-transparent">AI Tools Directory</h1>
+    <p class="text-slate-400 mt-3 max-w-xl mx-auto">Discover the latest curated AI tools for productivity, writing, and automation.</p>
+    
+    <div class="mt-6 max-w-md mx-auto">
+      <input id="searchInput" type="text" placeholder="Search AI tools..." class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:border-indigo-500 text-sm" />
+    </div>
+    <div id="categories" class="flex flex-wrap justify-center gap-2 mt-4"></div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 pb-16">
+    <div id="loading" class="text-center text-slate-400 py-10">Loading latest AI tools...</div>
+    <div id="toolsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </main>
+
+  <script>
+    const SHEET_ID = "1-kR7jfgx9Agm8ion0OKw-WGF-pgSAhSz14_F-FPVfWY";
+    const URL = `https://google.com{SHEET_ID}/gviz/tq?tqx=out:json`;
+
+    let allTools = [];
+    let selectedCategory = "All";
+
+    async function loadTools() {
+      try {
+        const res = await fetch(URL);
+        const text = await res.text();
+        const json = JSON.parse(text.substring(47).slice(0, -2));
+        const rows = json.table.rows;
+
+        allTools = rows.map(r => ({
+          title: r.c?.[0]?.v || "",
+          category: r.c?.[1]?.v || "AI Tool",
+          summary: r.c?.[2]?.v || "",
+          link: r.c?.[3]?.v || "#"
+        })).filter(t => t.title && t.title !== "Title");
+
+        document.getElementById("loading").style.display = "none";
+        renderCategories();
+        renderTools();
+      } catch (e) {
+        document.getElementById("loading").innerText = "Make sure Google Sheet is shared as 'Anyone with the link'.";
+      }
+    }
+
+    function renderCategories() {
+      const cats = ["All", ...new Set(allTools.map(t => t.category))];
+      const container = document.getElementById("categories");
+      container.innerHTML = cats.map(c => `
+        <button onclick="filterCategory('${c}')" class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${selectedCategory === c ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700'}">
+          ${c}
+        </button>
+      `).join("");
+    }
+
+    function filterCategory(cat) {
+      selectedCategory = cat;
+      renderCategories();
+      renderTools();
+    }
+
+    function renderTools() {
+      const q = document.getElementById("searchInput").value.toLowerCase();
+      const filtered = allTools.filter(t => {
+        const matchCat = selectedCategory === "All" || t.category === selectedCategory;
+        const matchSearch = t.title.toLowerCase().includes(q) || t.summary.toLowerCase().includes(q);
+        return matchCat && matchSearch;
+      });
+
+      document.getElementById("toolsGrid").innerHTML = filtered.map(t => `
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-indigo-500/50 transition">
+          <div>
+            <span class="text-xs font-medium px-2.5 py-1 rounded-md bg-indigo-500/10 text-indigo-300">${t.category}</span>
+            <h2 class="text-xl font-bold mt-3 text-white">${t.title}</h2>
+            <p class="text-slate-400 text-sm mt-2 leading-relaxed">${t.summary}</p>
+          </div>
+          <a href="${t.link}" target="_blank" rel="noopener" class="mt-6 inline-block text-center w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
+            Visit Tool ↗
+          </a>
+        </div>
+      `).join("");
+    }
+
+    document.getElementById("searchInput").addEventListener("input", renderTools);
+    loadTools();
+  </script>
+</body>
+</html>
